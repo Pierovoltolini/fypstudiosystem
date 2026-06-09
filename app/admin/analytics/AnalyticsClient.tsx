@@ -1,6 +1,10 @@
 // app/admin/analytics/AnalyticsClient.tsx
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
+import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import PlanGate from '@/components/admin/PlanGate'
+import SectionTour from '@/components/admin/SectionTour'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell,
@@ -8,6 +12,7 @@ import {
 import {
   TrendingUp, TrendingDown, ShoppingBag, Users, Package,
   BarChart2, ArrowUpRight, ArrowDownRight, Minus, DollarSign, Wallet, Clock, Tag,
+  Download, FileSpreadsheet, FileText,
 } from 'lucide-react'
 import { cn, formatPrice } from '@/lib/utils'
 import type { Order, OrderItem } from '@/types'
@@ -150,7 +155,7 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────
 export default function AnalyticsClient({ orders, customers, costs, cajaSessions }: Props) {
-  const { currency, color: primaryColor, vertical, group } = useVertical()
+  const { currency, color: primaryColor, vertical, group, business } = useVertical()
   const orderLabel   = vertical.orderLabel
   const productLabel = vertical.productLabel
   const [range, setRange] = useState<Range>('30d')
@@ -233,6 +238,133 @@ export default function AnalyticsClient({ orders, customers, costs, cajaSessions
   const hourlyChart = useMemo(() => buildHourlyChart(curr), [curr])
   const maxHourly   = Math.max(...hourlyChart.map(h => h.count), 1)
 
+  const rangeLabel  = RANGES.find(r => r.key === range)?.label ?? range
+  const businessName = business?.name ?? 'Negocio'
+  const exportDate   = new Date().toLocaleDateString('es-AR')
+
+  // ── Excel export ─────────────────────────────────────────────
+  const exportToExcel = useCallback(() => {
+    const wb = XLSX.utils.book_new()
+
+    // Sheet 1: KPIs
+    const kpiRows = [
+      ['Métrica', 'Período actual', 'Período anterior', 'Variación'],
+      ['Ingresos',         currRevenue,   prevRevenue,   `${pct(currRevenue, prevRevenue)}%`],
+      ['Pedidos',          currOrders,    prevOrders,    `${pct(currOrders, prevOrders)}%`],
+      ['Ticket promedio',  currAvgTicket, prevAvgTicket, `${pct(currAvgTicket, prevAvgTicket)}%`],
+      ['Nuevos clientes',  currCustomers, prevCustomers, `${pct(currCustomers, prevCustomers)}%`],
+    ]
+    const wsKPI = XLSX.utils.aoa_to_sheet([
+      [`Reporte de ventas — ${businessName}`],
+      [`Período: ${rangeLabel}  |  Exportado: ${exportDate}`],
+      [],
+      ...kpiRows,
+    ])
+    XLSX.utils.book_append_sheet(wb, wsKPI, 'KPIs')
+
+    // Sheet 2: Ventas por día
+    const dailyRows = [['Fecha', 'Ingresos', 'Pedidos'], ...dailyChart.map(d => [d.date, d.revenue, d.orders])]
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dailyRows), 'Ventas por día')
+
+    // Sheet 3: Top productos
+    const topRows = [['Producto', 'Unidades', 'Ingresos'], ...top.map(p => [p.name, p.qty, p.revenue])]
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(topRows), 'Top Productos')
+
+    XLSX.writeFile(wb, `${businessName.replace(/[^a-z0-9]/gi, '_')}_reportes_${range}.xlsx`)
+  }, [businessName, rangeLabel, exportDate, range, currRevenue, prevRevenue, currOrders, prevOrders, currAvgTicket, prevAvgTicket, currCustomers, prevCustomers, dailyChart, top])
+
+  // ── PDF export ───────────────────────────────────────────────
+  const exportToPDF = useCallback(() => {
+    const doc   = new jsPDF()
+    const blue  = [21, 101, 255] as [number, number, number]
+    const gray  = [107, 114, 128] as [number, number, number]
+    const dark  = [17, 24, 39] as [number, number, number]
+    let y = 20
+
+    // Header
+    doc.setFillColor(...blue)
+    doc.rect(0, 0, 210, 14, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('FYP Studio — Reporte de Ventas', 14, 9)
+
+    // Title
+    y = 28
+    doc.setTextColor(...dark)
+    doc.setFontSize(18)
+    doc.text(businessName, 14, y)
+    y += 8
+    doc.setFontSize(10)
+    doc.setTextColor(...gray)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Período: ${rangeLabel}  ·  Exportado: ${exportDate}`, 14, y)
+    y += 12
+
+    // KPIs
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...dark)
+    doc.text('Resumen del período', 14, y)
+    y += 8
+
+    const kpis = [
+      { label: 'Ingresos',        value: formatPrice(currRevenue, currency),   delta: pct(currRevenue, prevRevenue) },
+      { label: 'Pedidos',         value: String(currOrders),                   delta: pct(currOrders, prevOrders) },
+      { label: 'Ticket promedio', value: formatPrice(currAvgTicket, currency), delta: pct(currAvgTicket, prevAvgTicket) },
+      { label: 'Nuevos clientes', value: String(currCustomers),                delta: pct(currCustomers, prevCustomers) },
+    ]
+    kpis.forEach((kpi, i) => {
+      const col = i % 2 === 0 ? 14 : 110
+      if (i % 2 === 0 && i > 0) y += 22
+      doc.setFillColor(247, 249, 252)
+      doc.roundedRect(col, y, 90, 18, 3, 3, 'F')
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(...gray)
+      doc.text(kpi.label, col + 4, y + 6)
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...dark)
+      doc.text(kpi.value, col + 4, y + 14)
+      const dColor = kpi.delta > 0 ? [16, 185, 129] : kpi.delta < 0 ? [239, 68, 68] : [156, 163, 175]
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(dColor[0], dColor[1], dColor[2])
+      doc.text(`${kpi.delta > 0 ? '+' : ''}${kpi.delta}% vs anterior`, col + 60, y + 14)
+    })
+    y += 28
+
+    // Top productos
+    if (top.length > 0) {
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...dark)
+      doc.text('Top productos del período', 14, y)
+      y += 7
+      top.slice(0, 8).forEach((p, i) => {
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(...gray)
+        doc.text(`${i + 1}.`, 14, y)
+        doc.setTextColor(...dark)
+        doc.text(p.name.slice(0, 40), 22, y)
+        doc.setTextColor(...gray)
+        doc.text(`${p.qty} uds  ·  ${formatPrice(p.revenue, currency)}`, 130, y)
+        y += 6
+      })
+    }
+
+    // Footer
+    doc.setFontSize(8)
+    doc.setTextColor(...gray)
+    doc.text('Generado por FYP Studio', 14, 285)
+
+    doc.save(`${businessName.replace(/[^a-z0-9]/gi, '_')}_reportes_${range}.pdf`)
+  }, [businessName, rangeLabel, exportDate, range, currency, currRevenue, prevRevenue, currOrders, prevOrders, currAvgTicket, prevAvgTicket, currCustomers, prevCustomers, top])
+
+  const [exportOpen, setExportOpen] = useState(false)
+
   const KPIS = [
     {
       label:   'Ingresos',
@@ -277,6 +409,7 @@ export default function AnalyticsClient({ orders, customers, costs, cajaSessions
 
   return (
     <div className="space-y-5 animate-fade-in">
+      <SectionTour section="analytics" />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -288,17 +421,57 @@ export default function AnalyticsClient({ orders, customers, costs, cajaSessions
           <p className="text-sm text-gray-400 mt-0.5">Métricas de tu negocio</p>
         </div>
 
-        {/* Range selector */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 shrink-0">
-          {RANGES.map(r => (
-            <button key={r.key} onClick={() => setRange(r.key)}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-xs font-semibold transition-all',
-                range === r.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              )}>
-              {r.label}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Range selector */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+            {RANGES.map(r => (
+              <button key={r.key} onClick={() => setRange(r.key)}
+                className={cn(
+                  'rounded-lg px-3 py-1.5 text-xs font-semibold transition-all',
+                  range === r.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                )}>
+                {r.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Export button — solo Pro y Premium */}
+          <PlanGate required="pro" feature="Exportación de reportes" description="Exportá tus reportes en Excel y PDF activando el plan Pro.">
+          <div className="relative">
+            <button
+              onClick={() => setExportOpen(o => !o)}
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-1.5
+                         text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-all"
+            >
+              <Download size={12} />
+              Exportar
             </button>
-          ))}
+            {exportOpen && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setExportOpen(false)} />
+                <div className="absolute right-0 top-full mt-1.5 z-30 bg-white rounded-xl
+                                border border-gray-200 shadow-lg overflow-hidden w-40">
+                  <button
+                    onClick={() => { exportToExcel(); setExportOpen(false) }}
+                    className="flex items-center gap-2.5 w-full px-3 py-2.5 text-xs font-medium
+                               text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <FileSpreadsheet size={13} className="text-emerald-600" />
+                    Excel (.xlsx)
+                  </button>
+                  <button
+                    onClick={() => { exportToPDF(); setExportOpen(false) }}
+                    className="flex items-center gap-2.5 w-full px-3 py-2.5 text-xs font-medium
+                               text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                  >
+                    <FileText size={13} className="text-red-500" />
+                    PDF
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          </PlanGate>
         </div>
       </div>
 
@@ -349,6 +522,9 @@ export default function AnalyticsClient({ orders, customers, costs, cajaSessions
           </AreaChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Secciones detalladas — solo Pro y Premium */}
+      <PlanGate required="pro" feature="Reportes completos" description="Los reportes detallados (productos, actividad por hora, caja, rentabilidad) están disponibles en el plan Pro.">
 
       {/* Two-column: Top productos + Status breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -631,6 +807,7 @@ export default function AnalyticsClient({ orders, customers, costs, cajaSessions
             <p className="text-sm font-bold text-gray-900">Rentabilidad</p>
           </div>
 
+
           <div className="space-y-3">
             {/* Ingresos */}
             <div className="flex items-center justify-between py-2">
@@ -696,6 +873,8 @@ export default function AnalyticsClient({ orders, customers, costs, cajaSessions
           </div>
         </div>
       )}
+
+      </PlanGate>
 
     </div>
   )

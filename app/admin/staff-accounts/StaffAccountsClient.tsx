@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { Profile, Invitation, StaffPermission } from '@/types'
 import { useVertical } from '@/lib/vertical-context'
+import SectionTour from '@/components/admin/SectionTour'
 
 const ROLE_CONF = {
   owner:      { label: 'Propietario', bg: '#FEF3C7', text: '#92400E', icon: <Crown size={11} /> },
@@ -274,6 +275,7 @@ export default function StaffAccountsClient({
 
   return (
     <div className="space-y-6">
+      <SectionTour section="staff" />
 
       {/* ── Miembros activos ─────────────────────────────────── */}
       <section className="bg-white rounded-2xl border border-gray-100 p-6">

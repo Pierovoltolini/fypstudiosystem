@@ -9,6 +9,7 @@ import {
 import { cn, formatPrice } from '@/lib/utils'
 import { useVertical } from '@/lib/vertical-context'
 import type { DeliveryRider } from '@/types'
+import SectionTour from '@/components/admin/SectionTour'
 
 interface RecentOrder {
   id: string; rider_id: string; status: string; total: number; created_at: string
@@ -91,6 +92,7 @@ export default function RidersClient({ riders: initialRiders, recentOrders }: Pr
 
   return (
     <div className="space-y-5 animate-fade-in">
+      <SectionTour section="riders" />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">

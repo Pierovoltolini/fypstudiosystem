@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { cn, formatPrice } from '@/lib/utils'
 import type { InventoryItem, InventoryCategory, MovementType, SupplierProduct } from '@/types'
 import { getStockStatus } from '@/types'
+import SectionTour from '@/components/admin/SectionTour'
 import { useVertical } from '@/lib/vertical-context'
 
 interface Props {
@@ -88,6 +89,7 @@ export default function InventoryClient({ initialItems, initialCategories, suppl
 
   return (
     <div className="space-y-5 animate-fade-in pb-10">
+      <SectionTour section="inventory" />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">

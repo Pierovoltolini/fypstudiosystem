@@ -10,6 +10,7 @@ import {
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import type { DiscountCode } from '@/types'
+import SectionTour from '@/components/admin/SectionTour'
 
 interface Props { codes: DiscountCode[] }
 
@@ -86,6 +87,7 @@ export default function PromosClient({ codes: initialCodes }: Props) {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
+      <SectionTour section="promos" />
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl"
           style={{ background: `linear-gradient(135deg,${color},${color}99)` }}>

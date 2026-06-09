@@ -13,6 +13,7 @@ import { cn, formatPrice, orderStatusLabel, orderStatusColor } from '@/lib/utils
 import { useVertical } from '@/lib/vertical-context'
 import type { Order, Product, Category, BusinessHours, OrderItem, Combo, DeliveryRider } from '@/types'
 import CombosTab from './CombosTab'
+import SectionTour from '@/components/admin/SectionTour'
 
 type Tab = 'kitchen' | 'orders' | 'delivery' | 'mesas' | 'menu' | 'hours' | 'stats' | 'combos'
 
@@ -296,6 +297,7 @@ export default function FoodHub({ orders: initialOrders, products, categories, h
 
   return (
     <div className="space-y-4 animate-fade-in pb-4">
+      <SectionTour section="food" />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">

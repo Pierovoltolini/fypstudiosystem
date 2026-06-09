@@ -8,6 +8,7 @@ import type { RestaurantTable, TableSession, TableStatus, TableShape, TableReser
 import ReservationsTab from './ReservationsTab'
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react'
 import { useVertical } from '@/lib/vertical-context'
+import SectionTour from '@/components/admin/SectionTour'
 
 const STATUS_CONF: Record<TableStatus, {
   label: string; bg: string; text: string; dot: string; btnLabel: string; pulse?: boolean
@@ -300,6 +301,7 @@ export default function TablesClient({
 
   return (
     <div>
+      <SectionTour section="tables" />
       {/* Tab switcher */}
       <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-5">
         {([

@@ -10,6 +10,7 @@ import {
 import { cn, formatPrice } from '@/lib/utils'
 import type { Customer, Order, Plan } from '@/types'
 import { useVertical } from '@/lib/vertical-context'
+import SectionTour from '@/components/admin/SectionTour'
 import UpgradePrompt from '@/components/admin/UpgradePrompt'
 
 // ── Segmentos ─────────────────────────────────────────────────
@@ -160,6 +161,7 @@ export default function CustomersClient({ customers, plan, customerLimit }: Prop
 
   return (
     <div className="space-y-5 animate-fade-in">
+      <SectionTour section="customers" />
 
       {/* Plan limit banner */}
       {customerLimit !== Infinity && (

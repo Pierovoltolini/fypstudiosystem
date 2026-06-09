@@ -11,6 +11,7 @@ import {
 import { cn, formatPrice } from '@/lib/utils'
 import type { Supplier, SupplierProduct, InventoryItem, PurchaseOrder } from '@/types'
 import PurchaseOrdersTab from './PurchaseOrdersTab'
+import SectionTour from '@/components/admin/SectionTour'
 
 interface Props {
   businessId: string
@@ -79,6 +80,7 @@ export default function SuppliersClient({
 
   return (
     <div className="space-y-6 animate-fade-in pb-10">
+      <SectionTour section="suppliers" />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">

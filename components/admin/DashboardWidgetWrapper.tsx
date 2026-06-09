@@ -26,10 +26,12 @@ interface Props {
   onResize:       (size: WidgetSize) => void
   onRemove:       () => void
   children:       React.ReactNode
+  'data-tooltip-id'?: string
 }
 
 export default function DashboardWidgetWrapper({
   id, currentSize, availableSizes, onResize, onRemove, children,
+  'data-tooltip-id': tooltipId,
 }: Props) {
   const [sizeMenuOpen, setSizeMenuOpen] = useState(false)
 
@@ -47,6 +49,7 @@ export default function DashboardWidgetWrapper({
     <div
       ref={setNodeRef}
       data-widget-id={id}
+      data-tooltip-id={tooltipId}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -54,7 +57,7 @@ export default function DashboardWidgetWrapper({
       className={cn(
         'group select-none flex flex-col h-[260px]',
         COL_SPAN[currentSize],
-        isDragging && 'opacity-50 z-50 ring-2 ring-blue-400 ring-offset-2 rounded-2xl shadow-xl',
+        isDragging && 'opacity-0',
       )}
       {...attributes}
     >
@@ -129,8 +132,8 @@ export default function DashboardWidgetWrapper({
         </button>
       </div>
 
-      {/* Contenido del widget — flex-1 llena el espacio restante, overflow-hidden lo clipea */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      {/* Contenido del widget — flex-1 llena los 232px restantes, [&>*]:h-full estira el card */}
+      <div className="flex-1 min-h-0 overflow-hidden [&>*]:h-full">
         {children}
       </div>
     </div>

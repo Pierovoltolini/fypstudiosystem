@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useVertical } from '@/lib/vertical-context'
 import type { AIProductOutput } from '@/types'
+import SectionTour from '@/components/admin/SectionTour'
 
 type Tab = 'product' | 'promo' | 'insights'
 
@@ -21,6 +22,7 @@ export default function AIAssistant() {
 
   return (
     <div className="space-y-5">
+      <SectionTour section="ai_assistant" />
       {/* Tabs */}
       <div className="flex items-center gap-1 bg-gray-100 rounded-2xl p-1 overflow-x-auto scrollbar-hide">
         {([

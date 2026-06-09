@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Customer } from '@/types'
+import PlanGate from '@/components/admin/PlanGate'
 
 type Segment = 'all' | 'vip' | 'frequent' | 'new' | 'atrisk' | 'tag'
 
@@ -144,6 +145,7 @@ export default function CampaignsClient({ customers, businessName }: Props) {
   }
 
   return (
+    <PlanGate required="premium" feature="Campañas WhatsApp" description="Las campañas masivas por WhatsApp están disponibles exclusivamente en el plan Premium.">
     <div className="max-w-4xl mx-auto space-y-5 animate-fade-in">
 
       {/* Header */}
@@ -405,5 +407,6 @@ export default function CampaignsClient({ customers, businessName }: Props) {
         </div>
       </div>
     </div>
+  </PlanGate>
   )
 }

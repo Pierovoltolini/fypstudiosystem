@@ -8,6 +8,8 @@ import {
   Star, TrendingUp, Award, Users, Plus, Minus, Check,
 } from 'lucide-react'
 import type { LoyaltySettings } from '@/types'
+import PlanGate from '@/components/admin/PlanGate'
+import SectionTour from '@/components/admin/SectionTour'
 
 interface RawPoint {
   customer_id: string
@@ -99,7 +101,9 @@ export default function LoyaltyClient({ businessId, currency, initialSettings, r
   const earnLabel   = `1 ${currency} = ${settings.points_per_unit} pt${settings.points_per_unit !== 1 ? 's' : ''}`
 
   return (
+    <PlanGate required="pro" feature="Fidelización" description="El programa de puntos y fidelización está disponible en el plan Pro o Premium.">
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
+      <SectionTour section="loyalty" />
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100">
@@ -296,5 +300,6 @@ export default function LoyaltyClient({ businessId, currency, initialSettings, r
         </div>
       )}
     </div>
+    </PlanGate>
   )
 }

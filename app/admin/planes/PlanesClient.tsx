@@ -10,6 +10,7 @@ import {
 import { cn } from '@/lib/utils'
 import { PLAN_PRICES, ANNUAL_DISCOUNT } from '@/lib/plan-limits'
 import type { Plan } from '@/types'
+import SectionTour from '@/components/admin/SectionTour'
 
 // ── Tipos ────────────────────────────────────────────────────
 interface Subscription {
@@ -317,6 +318,7 @@ export default function PlanesClient({
 
   return (
     <div className="space-y-8 animate-fade-in max-w-4xl">
+      <SectionTour section="planes" />
 
       {/* Header */}
       <div>

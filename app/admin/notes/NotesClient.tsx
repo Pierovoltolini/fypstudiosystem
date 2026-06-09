@@ -5,6 +5,7 @@ import {
   Plus, Search, X, Trash2, Tag, BookOpen, Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import SectionTour from '@/components/admin/SectionTour'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Note {
@@ -252,6 +253,7 @@ export default function NotesClient({ businessId, userId, initialNotes }: Props)
 
   return (
     <div className="space-y-5 animate-fade-in">
+      <SectionTour section="notes" />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

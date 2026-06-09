@@ -17,6 +17,7 @@ import {
 import { formatPrice } from '@/lib/utils'
 import { orderStatusColor, orderStatusLabel } from '@/lib/utils'
 import QuickNotesWidget from './QuickNotesWidget'
+import AiInsightsWidget from './AiInsightsWidget'
 
 // ── Shared ────────────────────────────────────────────────────
 function WidgetSkeleton() {
@@ -1147,6 +1148,7 @@ export function renderWidget(id: string): React.ReactNode {
     case 'recent_leads':         return <RecentLeadsWidget         key={id} />
     case 'upcoming_visits_list': return <UpcomingVisitsListWidget  key={id} />
     case 'closed_deals_kpi':     return <ClosedDealsKPIWidget      key={id} />
+    case 'ai_insights':          return <AiInsightsWidget           key={id} />
     default:                     return null
   }
 }

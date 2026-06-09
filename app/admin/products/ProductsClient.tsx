@@ -12,6 +12,7 @@ import UpgradePrompt from '@/components/admin/UpgradePrompt'
 import { cn, formatPrice } from '@/lib/utils'
 import type { Product, Category, Plan } from '@/types'
 import { useVertical } from '@/lib/vertical-context'
+import SectionTour from '@/components/admin/SectionTour'
 
 type ActiveFilter = 'all' | 'active' | 'inactive'
 
@@ -107,6 +108,7 @@ export default function ProductsClient({ products: initialProducts, categories, 
 
   return (
     <div className="space-y-4 animate-fade-in">
+      <SectionTour section="products" />
 
       {/* Header */}
       <div className="flex items-center justify-between gap-3">

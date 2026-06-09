@@ -10,6 +10,7 @@ import { cn, formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 import type { Order } from '@/types'
 import { useVertical } from '@/lib/vertical-context'
+import SectionTour from '@/components/admin/SectionTour'
 
 // ── Constantes ────────────────────────────────────────────────
 type DateRange = 'today' | '7d' | '30d' | '60d'
@@ -237,6 +238,7 @@ export default function OrdersClient({ orders: initialOrders }: { orders: Order[
 
   return (
     <div className="space-y-4 animate-fade-in">
+      <SectionTour section="orders" />
 
       {/* New order toast — por encima del bottom nav en mobile (bottom-24) */}
       {newOrderToast && (

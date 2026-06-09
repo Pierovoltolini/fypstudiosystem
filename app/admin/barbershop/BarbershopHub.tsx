@@ -10,6 +10,7 @@ import {
 import { cn, formatPrice } from '@/lib/utils'
 import { useVertical } from '@/lib/vertical-context'
 import type { Booking, Staff, Branch, Product, BookingStatus } from '@/types'
+import SectionTour from '@/components/admin/SectionTour'
 
 interface Props {
   bookings: Booking[]; staff: Staff[]; branches: Branch[]; services: Product[]
@@ -127,6 +128,7 @@ export default function BarbershopHub({
 
   return (
     <div className="space-y-4 animate-fade-in pb-4">
+      <SectionTour section="barbershop" />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">

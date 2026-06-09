@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
 import { useVertical } from '@/lib/vertical-context'
+import SectionTour from '@/components/admin/SectionTour'
 
 type LeadStatus = 'new' | 'contacted' | 'qualified' | 'closed' | 'lost'
 
@@ -84,6 +85,7 @@ export default function LeadsClient({ leads: initialLeads, isRealEstate }: Props
 
   return (
     <div className="space-y-5 animate-fade-in">
+      <SectionTour section="leads" />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">

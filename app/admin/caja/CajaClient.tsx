@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { cn, formatPrice, formatDate } from '@/lib/utils'
 import { useVertical } from '@/lib/vertical-context'
+import SectionTour from '@/components/admin/SectionTour'
 
 // ── Types ──────────────────────────────────────────────────────
 interface Movement {
@@ -129,6 +130,7 @@ export default function CajaClient({ openRegister: initial, history: initialHist
   // ── Render ────────────────────────────────────────────────────
   return (
     <div className="space-y-5 animate-fade-in">
+      <SectionTour section="caja" />
 
       {/* Header */}
       <div className="flex items-center justify-between gap-3">

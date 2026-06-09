@@ -12,11 +12,13 @@ export type SubVertical =
   // comercio
   | 'ferreteria' | 'ropa' | 'calzado' | 'regalos' | 'floreria'
   | 'minimarket' | 'kiosco' | 'barrio' | 'jardineria' | 'hogar'
+  | 'herreria' | 'carpinteria' | 'jardineria_paisajismo'
   // servicios
   | 'barberia' | 'peluqueria' | 'veterinaria' | 'taller'
   | 'limpieza' | 'salud' | 'estetica' | 'profesional'
   // mercados
   | 'supermercado' | 'mayorista' | 'verduleria' | 'charcuteria' | 'minimercado'
+  | 'productor' | 'agropecuario'
 
 // Acepta valores nuevos Y los 7 legacy de la DB
 export type VerticalType =
@@ -154,8 +156,11 @@ export const VERTICALS: Record<VerticalGroup, VerticalConfig> = {
       { key: 'minimarket', label: 'Minimarket',      emoji: '🏬', examples: ['Minimarket', 'Almacén', 'Despensa'] },
       { key: 'kiosco',     label: 'Kiosco',          emoji: '🗞️', examples: ['Kiosco', 'Pañalera', 'Bazar'] },
       { key: 'barrio',     label: 'Tienda de barrio',emoji: '🏘️', examples: ['Almacén barrio', 'Mercadito', 'Abasto'] },
-      { key: 'jardineria', label: 'Jardinería',      emoji: '🌿', examples: ['Vivero', 'Centro de jardinería', 'Plantas'] },
-      { key: 'hogar',      label: 'Hogar & Deco',    emoji: '🛋️', examples: ['Mueblería', 'Bazar hogar', 'Decoración'] },
+      { key: 'jardineria',          label: 'Jardinería',     emoji: '🌿', examples: ['Vivero', 'Centro de jardinería', 'Plantas'] },
+      { key: 'hogar',               label: 'Hogar & Deco',   emoji: '🛋️', examples: ['Mueblería', 'Bazar hogar', 'Decoración'] },
+      { key: 'herreria',            label: 'Herrería',        emoji: '🔧', examples: ['Herrería', 'Metalúrgica', 'Soldadura'],           productLabel: 'Artículo' },
+      { key: 'carpinteria',         label: 'Carpintería',     emoji: '🪚', examples: ['Carpintería', 'Mueblería artesanal', 'Madera'],   productLabel: 'Artículo' },
+      { key: 'jardineria_paisajismo', label: 'Paisajismo',   emoji: '🌿', examples: ['Paisajismo', 'Diseño de jardines', 'Vivero premium'] },
     ],
     modules: ['orders', 'products', 'categories', 'inventory', 'caja', 'costs', 'suppliers', 'customers', 'analytics', 'promos', 'loyalty', 'campaigns', 'ai', 'notes', 'settings'],
     requiredModules: ['products', 'orders', 'settings'],
@@ -219,6 +224,8 @@ export const VERTICALS: Record<VerticalGroup, VerticalConfig> = {
       { key: 'verduleria',   label: 'Frutería / Verdulería', emoji: '🥦', examples: ['Verdulería', 'Frutería', 'Almacén'] },
       { key: 'charcuteria',  label: 'Charcutería',     emoji: '🥩', examples: ['Carnicería', 'Charcutería', 'Fiambrería'] },
       { key: 'minimercado',  label: 'Minimercado',     emoji: '🏬', examples: ['Minimercado', 'Abasto', 'Tienda express'] },
+      { key: 'productor',    label: 'Productor',        emoji: '🌾', examples: ['Productor', 'Distribuidor mayorista', 'Proveedor agrícola'], orderLabel: 'Venta' },
+      { key: 'agropecuario', label: 'Agropecuario',     emoji: '🐄', examples: ['Agropecuario', 'Granja', 'Tambo'], orderLabel: 'Venta' },
     ],
     modules: ['pos', 'products', 'inventory', 'caja', 'costs', 'suppliers', 'customers', 'analytics', 'notes', 'settings'],
     requiredModules: ['products', 'settings'],
@@ -284,6 +291,9 @@ const SUB_REMOVE_MODULES: Partial<Record<string, ModuleKey[]>> = {
   kiosco:      ['campaigns', 'loyalty'],
   verduleria:  ['customers'],
   charcuteria: ['customers'],
+  herreria:            ['loyalty', 'campaigns', 'promos'],
+  carpinteria:         ['loyalty', 'campaigns', 'promos'],
+  jardineria_paisajismo: ['loyalty', 'campaigns'],
   // real_estate legacy — comercio base tiene demasiados módulos no relevantes
   real_estate: ['orders', 'categories', 'inventory', 'caja', 'costs', 'suppliers', 'promos', 'loyalty', 'campaigns'],
 }
@@ -302,6 +312,8 @@ const SUB_ADD_MODULES: Partial<Record<string, ModuleKey[]>> = {
   verduleria:   ['promos'],
   charcuteria:  ['promos'],
   minimercado:  ['ai', 'promos'],
+  productor:    ['ai'],
+  agropecuario: ['ai'],
   // real_estate legacy — agrega leads y visitas
   real_estate:  ['leads', 'visits'],
 }

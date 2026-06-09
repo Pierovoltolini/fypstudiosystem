@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { slugify, cn } from '@/lib/utils'
 import { Plus, Tag, Loader2, Eye, EyeOff, GripVertical } from 'lucide-react'
 import type { Category } from '@/types'
+import SectionTour from '@/components/admin/SectionTour'
 
 export default function CategoryManager({
   businessId,
@@ -70,6 +71,7 @@ export default function CategoryManager({
 
   return (
     <div className="space-y-5">
+      <SectionTour section="categories" />
       {/* Formulario nueva categoría */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5">
         <p className="text-sm font-medium text-gray-700 mb-3">

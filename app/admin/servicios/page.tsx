@@ -4,6 +4,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import BarbershopHub from '../barbershop/BarbershopHub'
+import SectionTour from '@/components/admin/SectionTour'
 import type { Booking, Staff, Branch, Product } from '@/types'
 
 export const metadata = { title: 'Agenda' }
@@ -54,11 +55,14 @@ export default async function ServiciosPage() {
   ])
 
   return (
-    <BarbershopHub
-      bookings={(bookingsRes.data ?? []) as Booking[]}
-      staff={(staffRes.data ?? []) as Staff[]}
-      branches={(branchesRes.data ?? []) as Branch[]}
-      services={(servicesRes.data ?? []) as Product[]}
-    />
+    <>
+      <SectionTour section="servicios" />
+      <BarbershopHub
+        bookings={(bookingsRes.data ?? []) as Booking[]}
+        staff={(staffRes.data ?? []) as Staff[]}
+        branches={(branchesRes.data ?? []) as Branch[]}
+        services={(servicesRes.data ?? []) as Product[]}
+      />
+    </>
   )
 }

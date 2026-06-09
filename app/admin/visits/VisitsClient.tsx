@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Booking, Product } from '@/types'
+import SectionTour from '@/components/admin/SectionTour'
 
 type BookingStatus = 'pending' | 'confirmed' | 'done' | 'cancelled' | 'noshow'
 
@@ -306,6 +307,7 @@ export default function VisitsClient({ businessId, whatsapp, visits: initial, pr
 
   return (
     <div className="space-y-5 animate-fade-in">
+      <SectionTour section="visits" />
 
       {/* Header */}
       <div className="flex items-center justify-between">

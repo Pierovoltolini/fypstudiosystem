@@ -31,17 +31,17 @@ const ICON_MAP: Record<string, React.ElementType> = {
 }
 
 function NavItem({
-  href, label, icon: iconName, exact, onClick, verticalColor,
+  href, label, icon: iconName, exact, onClick, verticalColor, tooltipId,
 }: {
   href: string; label: string; icon: string; exact?: boolean
-  onClick?: () => void; verticalColor: string
+  onClick?: () => void; verticalColor: string; tooltipId?: string
 }) {
   const pathname = usePathname()
   const isActive = exact ? pathname === href : pathname.startsWith(href)
   const Icon = ICON_MAP[iconName] ?? Package
 
   return (
-    <Link href={href} onClick={onClick}
+    <Link href={href} onClick={onClick} data-tooltip-id={tooltipId}
       className={cn(
         'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
         isActive ? 'text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -135,6 +135,7 @@ function Sidebar({ business, userEmail, verticalColor, navItems, role, onAIOpen 
 
   return (
     <aside
+      data-tooltip-id="sidebar-nav"
       className="hidden lg:flex w-[220px] flex-col h-full shrink-0"
       style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid rgba(255,255,255,0.06)' }}
     >
@@ -166,7 +167,8 @@ function Sidebar({ business, userEmail, verticalColor, navItems, role, onAIOpen 
           .filter(item => role === 'owner' || !OWNER_ONLY_HREFS.includes(item.href))
           .map(item => (
             <NavItem key={item.href} href={item.href} label={item.label}
-              icon={item.icon} exact={item.exact} verticalColor={verticalColor} />
+              icon={item.icon} exact={item.exact} verticalColor={verticalColor}
+              tooltipId={item.href === '/admin/settings' ? 'settings-nav' : undefined} />
           ))}
 
         {/* Custom modules separator */}
@@ -488,6 +490,7 @@ export default function AdminShell({ children, business, userEmail, suspended, r
         {/* Floating AI button — visible para todos los planes */}
         <button
           onClick={() => setAIOpen(true)}
+          data-tooltip-id="ai-chat-btn"
           className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-30
                      h-12 w-12 rounded-2xl text-white shadow-lg
                      flex items-center justify-center

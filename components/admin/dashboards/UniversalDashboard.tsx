@@ -3,13 +3,16 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   TouchSensor,
   KeyboardSensor,
   useSensor,
   useSensors,
   closestCenter,
+  type DragStartEvent,
   type DragEndEvent,
+  type DragOverEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -24,7 +27,7 @@ import WidgetPicker from '@/components/admin/WidgetPicker'
 import { renderWidget } from '@/components/admin/DashboardWidgets'
 import { getAvailableSizes } from '@/lib/dashboard-widgets'
 import type { WidgetEntry, WidgetSize } from '@/lib/dashboard-widgets'
-import WelcomeTour from '@/components/admin/WelcomeTour'
+import DashboardOnboarding from '@/components/admin/DashboardOnboarding'
 
 export default function UniversalDashboard({ showTour = false }: { showTour?: boolean }) {
   const { businessId, userId, group, verticalSub, business } = useVertical()
@@ -32,12 +35,18 @@ export default function UniversalDashboard({ showTour = false }: { showTour?: bo
   const { widgets, loaded, addWidget, removeWidget, resizeWidget, reorderWidgets } =
     useDashboardPrefs(businessId, userId, group, verticalSub)
 
-  const [pickerOpen,  setPickerOpen]  = useState(false)
-  const [tourVisible, setTourVisible] = useState(showTour)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [activeId,   setActiveId]   = useState<string | null>(null)
 
-  // Ref para evitar stale closure en handleDragEnd
-  const widgetsRef = useRef<WidgetEntry[]>(widgets)
+  // Orden "en vivo" durante el drag — se actualiza en cada onDragOver para que el
+  // DOM refleje el orden proyectado en tiempo real y CSS Grid no deje huecos fantasma.
+  const [liveWidgets, setLiveWidgets] = useState<WidgetEntry[]>([])
+  const liveRef      = useRef<WidgetEntry[]>([])   // ref para acceso sin stale closure
+  const widgetsRef   = useRef<WidgetEntry[]>(widgets)
   useEffect(() => { widgetsRef.current = widgets }, [widgets])
+
+  // Durante el drag mostramos el orden en vivo; fuera del drag, el orden persistido.
+  const displayWidgets = activeId ? liveWidgets : widgets
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -45,17 +54,43 @@ export default function UniversalDashboard({ showTour = false }: { showTour?: bo
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(String(event.active.id))
+    const snapshot = widgetsRef.current
+    setLiveWidgets(snapshot)
+    liveRef.current = snapshot
+  }, [])
+
+  // Reordena el DOM en tiempo real: el grid refleja el orden proyectado sin huecos.
+  const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    const current  = widgetsRef.current
-    const oldIndex = current.findIndex(w => w.id === active.id)
-    const newIndex = current.findIndex(w => w.id === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
+    setLiveWidgets(prev => {
+      const oldIndex = prev.findIndex(w => w.id === active.id)
+      const newIndex = prev.findIndex(w => w.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return prev
+      const next = arrayMove(prev, oldIndex, newIndex)
+      liveRef.current = next
+      return next
+    })
+  }, [])
 
-    reorderWidgets(arrayMove(current, oldIndex, newIndex))
+  // Al soltar: persiste el último orden en vivo.
+  const handleDragEnd = useCallback((_event: DragEndEvent) => {
+    setActiveId(null)
+    const final = liveRef.current
+    setLiveWidgets([])
+    liveRef.current = []
+    if (final.length > 0) reorderWidgets(final)
   }, [reorderWidgets])
+
+  // Si el drag se cancela (ESC, touch cancel): descarta el orden en vivo.
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null)
+    setLiveWidgets([])
+    liveRef.current = []
+  }, [])
 
   const handleResize = useCallback((id: string, size: WidgetSize) => {
     resizeWidget(id, size)
@@ -66,7 +101,7 @@ export default function UniversalDashboard({ showTour = false }: { showTour?: bo
 
   return (
     <>
-    {tourVisible && <WelcomeTour onFinish={() => setTourVisible(false)} />}
+    <DashboardOnboarding alreadySeen={!showTour} />
     <div className="space-y-4 animate-fade-in pb-4">
 
       {/* Header */}
@@ -79,6 +114,7 @@ export default function UniversalDashboard({ showTour = false }: { showTour?: bo
         </div>
         <button
           onClick={() => setPickerOpen(true)}
+          data-tooltip-id="add-widget-btn"
           className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2
                      text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shrink-0"
         >
@@ -113,14 +149,18 @@ export default function UniversalDashboard({ showTour = false }: { showTour?: bo
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
-          <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
+          <SortableContext items={displayWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 [grid-auto-flow:dense]">
-              {widgets.map((entry: WidgetEntry) => (
+              {displayWidgets.map((entry: WidgetEntry, index: number) => (
                 <DashboardWidgetWrapper
                   key={entry.id}
                   id={entry.id}
+                  data-tooltip-id={index === 0 ? 'first-widget' : undefined}
                   currentSize={entry.size}
                   availableSizes={getAvailableSizes(entry.id)}
                   onResize={(size) => handleResize(entry.id, size)}
@@ -131,6 +171,19 @@ export default function UniversalDashboard({ showTour = false }: { showTour?: bo
               ))}
             </div>
           </SortableContext>
+
+          {/* Tarjeta flotante — única representación visual del widget siendo arrastrado */}
+          <DragOverlay dropAnimation={{ duration: 150, easing: 'ease' }}>
+            {activeId ? (
+              <div
+                className="w-[340px] h-[260px] rounded-2xl overflow-hidden
+                           shadow-2xl ring-1 ring-black/10 opacity-[0.97]"
+                style={{ transform: 'scale(1.03)', transformOrigin: 'center', cursor: 'grabbing' }}
+              >
+                {renderWidget(activeId)}
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       )}
 

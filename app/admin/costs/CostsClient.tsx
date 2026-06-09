@@ -1,9 +1,13 @@
 // app/admin/costs/CostsClient.tsx
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Loader2, ChevronDown, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Loader2, ChevronDown, AlertCircle, Download, FileSpreadsheet, FileText } from 'lucide-react'
 import { useVertical } from '@/lib/vertical-context'
+import SectionTour from '@/components/admin/SectionTour'
+import PlanGate from '@/components/admin/PlanGate'
+import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
 
 type CostEntry = {
   id: string
@@ -134,23 +138,169 @@ export default function CostsClient({ orders, cogs }: {
   const fmt  = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0 })
   const fmtD = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: '2-digit' })
 
+  const exportDate = new Date().toLocaleDateString('es-AR')
+
+  const exportToExcel = useCallback(() => {
+    const wb = XLSX.utils.book_new()
+    const rows = [
+      [`Costos — Exportado: ${exportDate}`],
+      [],
+      ['Nombre', 'Tipo', 'Monto', 'Fecha', 'Notas'],
+      ...costs.map(c => [c.name, c.type, c.amount, c.date, c.notes ?? '']),
+      [],
+      ['TOTAL', '', costs.reduce((s, c) => s + c.amount, 0), '', ''],
+    ]
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Costos')
+
+    // Resumen por tipo
+    const byTypeRows = [['Tipo', 'Total'], ...byType.map(([t, v]) => [t, v])]
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(byTypeRows), 'Por tipo')
+
+    XLSX.writeFile(wb, `costos_${exportDate.replace(/\//g, '-')}.xlsx`)
+  }, [costs, byType, exportDate])
+
+  const exportToPDF = useCallback(() => {
+    const doc  = new jsPDF()
+    const blue = [21, 101, 255] as [number, number, number]
+    const gray = [107, 114, 128] as [number, number, number]
+    const dark = [17, 24, 39]   as [number, number, number]
+    let y = 20
+
+    // Header
+    doc.setFillColor(...blue)
+    doc.rect(0, 0, 210, 14, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('FYP Studio — Reporte de Costos', 14, 9)
+
+    y = 28
+    doc.setTextColor(...dark)
+    doc.setFontSize(16)
+    doc.text('Reporte de Costos', 14, y)
+    y += 8
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...gray)
+    doc.text(`Exportado: ${exportDate}`, 14, y)
+    y += 12
+
+    // Totales
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...dark)
+    doc.text(`Total costos: ${currency} ${fmt(totalCosts)}`, 14, y)
+    y += 10
+
+    // Por tipo
+    if (byType.length > 0) {
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Por tipo:', 14, y)
+      y += 7
+      byType.slice(0, 8).forEach(([tipo, monto]) => {
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(...gray)
+        doc.text(`• ${tipo}`, 18, y)
+        doc.setTextColor(...dark)
+        doc.text(`${currency} ${fmt(monto)}`, 130, y)
+        y += 6
+      })
+      y += 4
+    }
+
+    // Lista de costos
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...dark)
+    doc.text('Detalle de costos:', 14, y)
+    y += 7
+
+    costs.slice(0, 30).forEach(c => {
+      if (y > 275) { doc.addPage(); y = 20 }
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(...dark)
+      doc.text(c.name.slice(0, 40), 14, y)
+      doc.setTextColor(...gray)
+      doc.text(c.type, 100, y)
+      doc.setTextColor(...dark)
+      doc.text(`${currency} ${fmt(c.amount)}`, 150, y)
+      doc.setTextColor(...gray)
+      doc.text(fmtD(c.date), 175, y)
+      y += 6
+    })
+
+    doc.setFontSize(8)
+    doc.setTextColor(...gray)
+    doc.text('Generado por FYP Studio', 14, 285)
+
+    doc.save(`costos_${exportDate.replace(/\//g, '-')}.pdf`)
+  }, [costs, byType, totalCosts, currency, fmt, fmtD, exportDate])
+
+  const [exportOpen, setExportOpen] = useState(false)
+
   return (
     <div className="animate-fade-in max-w-3xl space-y-6 pb-10">
+      <SectionTour section="costs" />
 
       {/* ── HEADER ── */}
       <div className="pb-7 border-b border-gray-200 animate-fade-up">
-        <p className="text-[10px] tracking-[0.3em] uppercase text-blue-500 font-bold mb-3">
-          FYP · STUDIO
-        </p>
-        <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight leading-tight">
-          Llevá todos los costos<br />
-          <span className="bg-gradient-to-r from-blue-600 to-sky-500 bg-clip-text text-transparent">
-            de tu comercio
-          </span>
-        </h1>
-        <p className="text-sm text-gray-400 font-light mt-3 leading-relaxed">
-          Maximizá tus beneficios con nuestros controles de costos y rentabilidad.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] tracking-[0.3em] uppercase text-blue-500 font-bold mb-3">
+              FYP · STUDIO
+            </p>
+            <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight leading-tight">
+              Llevá todos los costos<br />
+              <span className="bg-gradient-to-r from-blue-600 to-sky-500 bg-clip-text text-transparent">
+                de tu comercio
+              </span>
+            </h1>
+            <p className="text-sm text-gray-400 font-light mt-3 leading-relaxed">
+              Maximizá tus beneficios con nuestros controles de costos y rentabilidad.
+            </p>
+          </div>
+
+          {/* Export — solo Pro y Premium */}
+          <PlanGate required="pro" feature="Exportación de costos" description="Exportá tus costos en Excel y PDF activando el plan Pro.">
+          <div className="relative shrink-0 mt-2">
+            <button
+              onClick={() => setExportOpen(o => !o)}
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2
+                         text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-all"
+            >
+              <Download size={12} />
+              Exportar
+            </button>
+            {exportOpen && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setExportOpen(false)} />
+                <div className="absolute right-0 top-full mt-1.5 z-30 bg-white rounded-xl
+                                border border-gray-200 shadow-lg overflow-hidden w-40">
+                  <button
+                    onClick={() => { exportToExcel(); setExportOpen(false) }}
+                    className="flex items-center gap-2.5 w-full px-3 py-2.5 text-xs font-medium
+                               text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <FileSpreadsheet size={13} className="text-emerald-600" />
+                    Excel (.xlsx)
+                  </button>
+                  <button
+                    onClick={() => { exportToPDF(); setExportOpen(false) }}
+                    className="flex items-center gap-2.5 w-full px-3 py-2.5 text-xs font-medium
+                               text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                  >
+                    <FileText size={13} className="text-red-500" />
+                    PDF
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          </PlanGate>
+        </div>
       </div>
 
       {/* ── MÉTRICAS ── */}
