@@ -1,37 +1,60 @@
 // app/api/cron/booking-reminders/route.ts
 // Envía recordatorios de turno para el día siguiente.
-// Corre cada día a las 20:00 UTC (configurado en vercel.json).
 // Protegido con CRON_SECRET.
+
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 
 const FROM = process.env.EMAIL_FROM ?? 'FYP Studio <onboarding@resend.dev>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fyp.studio'
 
-// ── Helpers ────────────────────────────────────────────────────
-
 function fmtDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number)
   const d = new Date(year, month - 1, day)
+
   return d.toLocaleDateString('es-AR', {
-    weekday: 'long', day: 'numeric', month: 'long',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
   })
 }
 
 function fmtTime(time: string): string {
-  return time.slice(0, 5) // '10:30:00' → '10:30'
+  return time.slice(0, 5)
 }
 
-// ── Email: recordatorio al cliente ─────────────────────────────
+type RelationName = { name: string } | { name: string }[] | null
+
+type BookingRow = {
+  id: string
+  business_id: string
+  customer_name: string
+  customer_email: string
+  customer_phone: string | null
+  date: string
+  start_time: string
+  end_time: string
+  business: RelationName
+  product: RelationName
+}
+
+function getRelationName(value: RelationName): string | null {
+  if (!value) return null
+  if (Array.isArray(value)) return value[0]?.name ?? null
+  return value.name ?? null
+}
 
 function customerReminderHtml(data: {
   customerName: string
   businessName: string
-  dateLabel:    string
-  startTime:    string
-  serviceName:  string | null
+  dateLabel: string
+  startTime: string
+  serviceName: string | null
 }): string {
   const { customerName, businessName, dateLabel, startTime, serviceName } = data
+
   const serviceRow = serviceName
     ? `<tr>
         <td style="padding:6px 0;font-size:13px;color:#6B7280;width:110px;">Servicio</td>
@@ -47,23 +70,14 @@ function customerReminderHtml(data: {
   <title>Recordatorio de turno</title>
 </head>
 <body style="margin:0;padding:0;background:#F7F9FC;font-family:'Inter',Arial,sans-serif;">
-  <div style="max-width:520px;margin:40px auto;background:#ffffff;border-radius:20px;
-              overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
-
-    <div style="background:linear-gradient(135deg,#1565FF 0%,#6366F1 100%);
-                padding:36px 40px 28px;text-align:center;">
+  <div style="max-width:520px;margin:40px auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+    <div style="background:linear-gradient(135deg,#1565FF 0%,#6366F1 100%);padding:36px 40px 28px;text-align:center;">
       <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:16px;">
-        <div style="width:32px;height:32px;background:rgba(255,255,255,0.2);
-                    border-radius:9px;display:inline-flex;align-items:center;
-                    justify-content:center;font-size:16px;">📅</div>
+        <div style="width:32px;height:32px;background:rgba(255,255,255,0.2);border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">📅</div>
         <span style="color:#fff;font-size:16px;font-weight:800;letter-spacing:-0.3px;">FYP Studio</span>
       </div>
-      <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800;line-height:1.2;">
-        Recordatorio de turno
-      </h1>
-      <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">
-        Hola ${customerName}, te esperamos mañana
-      </p>
+      <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800;line-height:1.2;">Recordatorio de turno</h1>
+      <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">Hola ${customerName}, te esperamos mañana</p>
     </div>
 
     <div style="padding:32px 40px;">
@@ -86,42 +100,32 @@ function customerReminderHtml(data: {
       </table>
 
       <div style="background:#EEF2FF;border-radius:12px;padding:14px 18px;margin-bottom:24px;">
-        <p style="margin:0;font-size:13px;color:#4338CA;">
-          Si necesitás cancelar o modificar tu turno, contactá al negocio con anticipación.
-        </p>
+        <p style="margin:0;font-size:13px;color:#4338CA;">Si necesitás cancelar o modificar tu turno, contactá al negocio con anticipación.</p>
       </div>
 
       <div style="text-align:center;">
-        <a href="${APP_URL}"
-           style="display:inline-block;background:linear-gradient(135deg,#1565FF,#6366F1);
-                  color:#fff;text-decoration:none;font-size:14px;font-weight:700;
-                  padding:13px 32px;border-radius:12px;">
+        <a href="${APP_URL}" style="display:inline-block;background:linear-gradient(135deg,#1565FF,#6366F1);color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;">
           Ver detalles →
         </a>
       </div>
     </div>
 
-    <div style="background:#F9FAFB;padding:16px 40px;border-top:1px solid #E5E7EB;
-                text-align:center;">
-      <p style="color:#9CA3AF;font-size:11px;margin:0;">
-        Powered by <strong style="color:#6366F1;">FYP Studio</strong>
-      </p>
+    <div style="background:#F9FAFB;padding:16px 40px;border-top:1px solid #E5E7EB;text-align:center;">
+      <p style="color:#9CA3AF;font-size:11px;margin:0;">Powered by <strong style="color:#6366F1;">FYP Studio</strong></p>
     </div>
   </div>
 </body>
 </html>`
 }
 
-// ── Email: resumen al negocio ───────────────────────────────────
-
 function businessSummaryHtml(data: {
   businessName: string
-  dateLabel:    string
+  dateLabel: string
   bookings: {
     customerName: string
-    startTime:    string
-    endTime:      string
-    serviceName:  string | null
+    startTime: string
+    endTime: string
+    serviceName: string | null
     customerPhone: string | null
   }[]
 }): string {
@@ -129,19 +133,20 @@ function businessSummaryHtml(data: {
 
   const rows = bookings
     .sort((a, b) => a.startTime.localeCompare(b.startTime))
-    .map(b => {
+    .map((b) => {
       const service = b.serviceName ?? '—'
-      const phone   = b.customerPhone
+      const phone = b.customerPhone
         ? `<a href="tel:${b.customerPhone}" style="color:#6366F1;">${b.customerPhone}</a>`
         : '—'
+
       return `<tr>
-        <td style="padding:10px 12px;font-size:13px;color:#111827;border-bottom:1px solid #F3F4F6;
-                   font-weight:600;white-space:nowrap;">${fmtTime(b.startTime)}</td>
+        <td style="padding:10px 12px;font-size:13px;color:#111827;border-bottom:1px solid #F3F4F6;font-weight:600;white-space:nowrap;">${fmtTime(b.startTime)}</td>
         <td style="padding:10px 12px;font-size:13px;color:#111827;border-bottom:1px solid #F3F4F6;">${b.customerName}</td>
         <td style="padding:10px 12px;font-size:13px;color:#6B7280;border-bottom:1px solid #F3F4F6;">${service}</td>
         <td style="padding:10px 12px;font-size:13px;color:#6B7280;border-bottom:1px solid #F3F4F6;">${phone}</td>
       </tr>`
-    }).join('')
+    })
+    .join('')
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -151,23 +156,14 @@ function businessSummaryHtml(data: {
   <title>Turnos de mañana — ${businessName}</title>
 </head>
 <body style="margin:0;padding:0;background:#F7F9FC;font-family:'Inter',Arial,sans-serif;">
-  <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:20px;
-              overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
-
-    <div style="background:linear-gradient(135deg,#1565FF 0%,#6366F1 100%);
-                padding:36px 40px 28px;text-align:center;">
+  <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+    <div style="background:linear-gradient(135deg,#1565FF 0%,#6366F1 100%);padding:36px 40px 28px;text-align:center;">
       <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:16px;">
-        <div style="width:32px;height:32px;background:rgba(255,255,255,0.2);
-                    border-radius:9px;display:inline-flex;align-items:center;
-                    justify-content:center;font-size:16px;">📋</div>
+        <div style="width:32px;height:32px;background:rgba(255,255,255,0.2);border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">📋</div>
         <span style="color:#fff;font-size:16px;font-weight:800;letter-spacing:-0.3px;">FYP Studio</span>
       </div>
-      <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800;line-height:1.2;">
-        Turnos de mañana
-      </h1>
-      <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">
-        ${businessName} · ${dateLabel}
-      </p>
+      <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800;line-height:1.2;">Turnos de mañana</h1>
+      <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">${businessName} · ${dateLabel}</p>
     </div>
 
     <div style="padding:32px 40px;">
@@ -179,34 +175,24 @@ function businessSummaryHtml(data: {
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr style="background:#F9FAFB;">
-              <th style="padding:10px 12px;font-size:11px;font-weight:700;color:#6B7280;
-                         text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Hora</th>
-              <th style="padding:10px 12px;font-size:11px;font-weight:700;color:#6B7280;
-                         text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Cliente</th>
-              <th style="padding:10px 12px;font-size:11px;font-weight:700;color:#6B7280;
-                         text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Servicio</th>
-              <th style="padding:10px 12px;font-size:11px;font-weight:700;color:#6B7280;
-                         text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Teléfono</th>
+              <th style="padding:10px 12px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Hora</th>
+              <th style="padding:10px 12px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Cliente</th>
+              <th style="padding:10px 12px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Servicio</th>
+              <th style="padding:10px 12px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Teléfono</th>
             </tr>
           </thead>
-          <tbody>
-            ${rows}
-          </tbody>
+          <tbody>${rows}</tbody>
         </table>
       </div>
 
       <div style="text-align:center;margin-top:28px;">
-        <a href="${APP_URL}/admin/bookings"
-           style="display:inline-block;background:linear-gradient(135deg,#1565FF,#6366F1);
-                  color:#fff;text-decoration:none;font-size:14px;font-weight:700;
-                  padding:13px 32px;border-radius:12px;">
+        <a href="${APP_URL}/admin/bookings" style="display:inline-block;background:linear-gradient(135deg,#1565FF,#6366F1);color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:13px 32px;border-radius:12px;">
           Ver agenda completa →
         </a>
       </div>
     </div>
 
-    <div style="background:#F9FAFB;padding:16px 40px;border-top:1px solid #E5E7EB;
-                text-align:center;">
+    <div style="background:#F9FAFB;padding:16px 40px;border-top:1px solid #E5E7EB;text-align:center;">
       <p style="color:#9CA3AF;font-size:11px;margin:0;">
         Powered by <strong style="color:#6366F1;">FYP Studio</strong> ·
         <a href="${APP_URL}/admin/settings" style="color:#9CA3AF;">Configurar notificaciones</a>
@@ -217,41 +203,26 @@ function businessSummaryHtml(data: {
 </html>`
 }
 
-// ── Tipos ───────────────────────────────────────────────────────
-
-type BookingRow = {
-  id:             string
-  business_id:    string
-  customer_name:  string
-  customer_email: string
-  customer_phone: string | null
-  date:           string
-  start_time:     string
-  end_time:       string
-  business: { name: string } | null
-  product:  { name: string } | null
-}
-
-// ── Handler principal ───────────────────────────────────────────
-
 export async function GET(req: Request) {
-  const auth   = req.headers.get('authorization')
+  const auth = req.headers.get('authorization')
   const secret = process.env.CRON_SECRET
+
   if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const service = createServiceClient()
 
-  const today       = new Date()
-  const tomorrow    = new Date(today.getTime() + 86_400_000)
+  const today = new Date()
+  const tomorrow = new Date(today.getTime() + 86_400_000)
   const tomorrowStr = tomorrow.toISOString().split('T')[0]
-  const dateLabel   = fmtDate(tomorrowStr)
+  const dateLabel = fmtDate(tomorrowStr)
 
-  // Obtener todos los turnos del día siguiente pendientes de reminder
   const { data: bookings, error } = await service
     .from('bookings')
-    .select('id, business_id, customer_name, customer_email, customer_phone, date, start_time, end_time, business:businesses(name), product:products(name)')
+    .select(
+      'id, business_id, customer_name, customer_email, customer_phone, date, start_time, end_time, business:businesses(name), product:products(name)'
+    )
     .eq('date', tomorrowStr)
     .not('status', 'in', '(cancelled,noshow)')
     .is('reminder_sent_at', null)
@@ -271,39 +242,44 @@ export async function GET(req: Request) {
   let businessesSent = 0
   const processedIds: string[] = []
 
-  // Agrupar por business_id
+  const rows = (bookings ?? []) as unknown as BookingRow[]
   const byBusiness = new Map<string, BookingRow[]>()
-  for (const b of bookings as BookingRow[]) {
+
+  for (const b of rows) {
     const list = byBusiness.get(b.business_id) ?? []
     list.push(b)
     byBusiness.set(b.business_id, list)
   }
 
-  for (const [businessId, bizBookings] of byBusiness) {
-    const businessName = bizBookings[0].business?.name ?? 'Tu negocio'
+  for (const [businessId, bizBookings] of Array.from(byBusiness.entries())) {
+    const businessName = getRelationName(bizBookings[0].business) ?? 'Tu negocio'
 
-    // 1. Emails individuales a cada cliente
     for (const booking of bizBookings) {
-      const serviceName = booking.product?.name ?? null
+      const serviceName = getRelationName(booking.product)
+
       const html = customerReminderHtml({
         customerName: booking.customer_name,
         businessName,
         dateLabel,
-        startTime:   fmtTime(booking.start_time),
+        startTime: fmtTime(booking.start_time),
         serviceName,
       })
 
       if (apiKey) {
         const res = await fetch('https://api.resend.com/emails', {
-          method:  'POST',
-          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({
-            from:    FROM,
-            to:      [booking.customer_email],
+            from: FROM,
+            to: [booking.customer_email],
             subject: `Recordatorio: tu turno mañana en ${businessName}`,
             html,
           }),
         })
+
         if (res.ok) customersSent++
       } else {
         console.log(`[booking-reminders] Simularía email a ${booking.customer_email} (${businessName})`)
@@ -313,7 +289,6 @@ export async function GET(req: Request) {
       processedIds.push(booking.id)
     }
 
-    // 2. Email resumen al dueño del negocio
     try {
       const { data: profile } = await service
         .from('profiles')
@@ -323,36 +298,45 @@ export async function GET(req: Request) {
         .single()
 
       if (profile?.user_id) {
-        const { data: { user: authUser } } = await service.auth.admin.getUserById(profile.user_id)
+        const {
+          data: { user: authUser },
+        } = await service.auth.admin.getUserById(profile.user_id)
+
         const ownerEmail = authUser?.email
 
         if (ownerEmail) {
           const html = businessSummaryHtml({
             businessName,
             dateLabel,
-            bookings: bizBookings.map(b => ({
-              customerName:  b.customer_name,
-              startTime:     b.start_time,
-              endTime:       b.end_time,
-              serviceName:   b.product?.name ?? null,
+            bookings: bizBookings.map((b) => ({
+              customerName: b.customer_name,
+              startTime: b.start_time,
+              endTime: b.end_time,
+              serviceName: getRelationName(b.product),
               customerPhone: b.customer_phone,
             })),
           })
 
           if (apiKey) {
             const res = await fetch('https://api.resend.com/emails', {
-              method:  'POST',
-              headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
               body: JSON.stringify({
-                from:    FROM,
-                to:      [ownerEmail],
+                from: FROM,
+                to: [ownerEmail],
                 subject: `Turnos de mañana — ${businessName}`,
                 html,
               }),
             })
+
             if (res.ok) businessesSent++
           } else {
-            console.log(`[booking-reminders] Simularía resumen a ${ownerEmail} (${businessName}, ${bizBookings.length} turnos)`)
+            console.log(
+              `[booking-reminders] Simularía resumen a ${ownerEmail} (${businessName}, ${bizBookings.length} turnos)`
+            )
             businessesSent++
           }
         }
@@ -362,7 +346,6 @@ export async function GET(req: Request) {
     }
   }
 
-  // Marcar reminder_sent_at en batch
   if (processedIds.length > 0) {
     const { error: updateErr } = await service
       .from('bookings')
