@@ -359,8 +359,16 @@ export function getVerticalGroup(type?: string | null): VerticalGroup {
   return getVertical(type).key
 }
 
+export interface NavItem {
+  key: ModuleKey
+  label: string
+  icon: string
+  href: string
+  exact: boolean
+}
+
 // Convierte una lista de ModuleKey a nav items con labels y rutas
-function modulesToNavItems(modules: ModuleKey[], config: VerticalConfig) {
+function modulesToNavItems(modules: ModuleKey[], config: VerticalConfig): NavItem[] {
   return modules.map(key => {
     const nav = MODULE_NAV[key]
     if (!nav) return null
@@ -404,16 +412,16 @@ function modulesToNavItems(modules: ModuleKey[], config: VerticalConfig) {
     }
 
     return { key, label, icon: nav.icon, href: nav.href, exact: false }
-  }).filter(Boolean) as ReturnType<typeof getNavItems>
+  }).filter((item): item is NavItem => item !== null)
 }
 
 // Nav items por grupo (sin ajustes de subrubro) — retrocompatible
-export function getNavItems(vertical?: string | null) {
+export function getNavItems(vertical?: string | null): NavItem[] {
   return modulesToNavItems(getVertical(vertical).modules, getVertical(vertical))
 }
 
 // Nav items con ajustes por subrubro — usar en AdminShell
-export function getNavItemsBySub(vertical?: string | null, sub?: string | null) {
+export function getNavItemsBySub(vertical?: string | null, sub?: string | null): NavItem[] {
   if (!sub) return getNavItems(vertical)
 
   const config = getVertical(vertical)
