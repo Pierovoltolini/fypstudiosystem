@@ -11,3 +11,7 @@
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# Configuracion local de Claude Code (rutas propias de cada maquina)
+.claude/settings.local.json
+.claude/auto-sync.sh
