@@ -168,7 +168,7 @@ export default function ProductForm({ categories, product }: Props) {
 
   // ── Computed values ────────────────────────────────────────
   const costNum   = parseFloat(costPrice)  || 0
-  const marginNum = Math.min(parseFloat(marginPct) || 0, 99)
+  const marginNum = Math.max(parseFloat(marginPct) || 0, 0)
   const suggestedPrice = costNum > 0 && marginNum > 0
     ? +(costNum * (1 + marginNum / 100)).toFixed(2)
     : costNum > 0 ? costNum : 0
@@ -615,7 +615,7 @@ export default function ProductForm({ categories, product }: Props) {
             <div>
               <label className={L}>Margen (%)</label>
               <input
-                type="number" min="0" max="99" step="1"
+                type="number" min="0" step="1"
                 value={marginPct}
                 onChange={e => setMarginPct(e.target.value)}
                 placeholder="30"

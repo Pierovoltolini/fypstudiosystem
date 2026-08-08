@@ -256,7 +256,9 @@ export function RecentOrdersWidget() {
       .limit(5)
       .then(({ data }) => { setOrders(data ?? []); setLoading(false) })
 
-    const ch = supabase.channel(`widget-orders-${businessId}`)
+    // Sufijo random: evita colisión de nombre de canal cuando el widget
+    // se monta dos veces a la vez (grilla + DragOverlay durante el drag).
+    const ch = supabase.channel(`widget-orders-${businessId}-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'orders',
         filter: `business_id=eq.${businessId}`,
