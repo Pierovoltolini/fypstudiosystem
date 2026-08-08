@@ -191,11 +191,8 @@ export default function SectionTour({ section }: { section: string }) {
       {/* ── Modal ── */}
       {open && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={handleDone}
-          />
+          {/* Backdrop — decorativo, no cierra al tocar afuera (evita cierres accidentales en mobile) */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
           {/* Card */}
           <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-sm p-7 animate-slide-up">
