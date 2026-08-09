@@ -14,7 +14,7 @@ import {
   CheckCircle2, Clock, Target, MessageCircle, Home, TrendingUp,
   Calendar, CalendarCheck,
 } from 'lucide-react'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, cn } from '@/lib/utils'
 import { orderStatusColor, orderStatusLabel } from '@/lib/utils'
 import QuickNotesWidget from './QuickNotesWidget'
 import AiInsightsWidget from './AiInsightsWidget'
@@ -48,51 +48,95 @@ function WidgetFooterLink({ href, label, color }: { href: string; label: string;
 }
 
 // ── 1. Gráfico de ventas ──────────────────────────────────────
+type SalesRange = 'today' | '7d' | '30d'
+const SALES_RANGES: { key: SalesRange; label: string }[] = [
+  { key: 'today', label: 'Hoy' },
+  { key: '7d',    label: '7 días' },
+  { key: '30d',   label: '30 días' },
+]
+
 export function SalesChartWidget() {
   const { businessId, currency, color } = useVertical()
   const supabase = createClient()
+  const [range,     setRange]     = useState<SalesRange>('today')
   const [chartData, setChartData] = useState<{ label: string; ventas: number }[]>([])
   const [total,     setTotal]     = useState(0)
   const [loading,   setLoading]   = useState(true)
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0]
+    setLoading(true)
+    const from = new Date()
+    from.setHours(0, 0, 0, 0)
+    if (range === '7d')  from.setDate(from.getDate() - 6)
+    if (range === '30d') from.setDate(from.getDate() - 29)
+
     supabase
       .from('orders')
       .select('created_at, total')
       .eq('business_id', businessId)
       .eq('confirmed_sale', true)
-      .gte('created_at', today + 'T00:00:00')
+      .gte('created_at', from.toISOString())
       .then(({ data }) => {
         const orders = data ?? []
         setTotal(orders.reduce((s, o) => s + o.total, 0))
-        const base = new Date(); base.setHours(0, 0, 0, 0)
-        setChartData(Array.from({ length: 12 }, (_, i) => {
-          const from = new Date(base); from.setHours(i * 2)
-          const to   = new Date(base); to.setHours(i * 2 + 2)
-          return {
-            label: `${i * 2}h`,
-            ventas: orders.filter(o => {
-              const d = new Date(o.created_at); return d >= from && d < to
-            }).reduce((s, o) => s + o.total, 0),
-          }
-        }))
+
+        if (range === 'today') {
+          setChartData(Array.from({ length: 12 }, (_, i) => {
+            const bFrom = new Date(from); bFrom.setHours(i * 2)
+            const bTo   = new Date(from); bTo.setHours(i * 2 + 2)
+            return {
+              label: `${i * 2}h`,
+              ventas: orders.filter(o => {
+                const d = new Date(o.created_at); return d >= bFrom && d < bTo
+              }).reduce((s, o) => s + o.total, 0),
+            }
+          }))
+        } else {
+          const days = range === '7d' ? 7 : 30
+          setChartData(Array.from({ length: days }, (_, i) => {
+            const dayStart = new Date(from); dayStart.setDate(from.getDate() + i)
+            const dayEnd   = new Date(dayStart); dayEnd.setDate(dayStart.getDate() + 1)
+            return {
+              label: dayStart.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
+              ventas: orders.filter(o => {
+                const d = new Date(o.created_at); return d >= dayStart && d < dayEnd
+              }).reduce((s, o) => s + o.total, 0),
+            }
+          }))
+        }
         setLoading(false)
       })
-  }, [businessId])
+  }, [businessId, range])
 
   if (loading) return <WidgetSkeleton />
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold text-gray-900">Ventas · Hoy</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-semibold text-gray-900">Ventas</p>
         <p className="text-sm font-bold text-gray-900">{formatPrice(total, currency)}</p>
       </div>
+
+      <div className="flex items-center gap-1 mb-3">
+        {SALES_RANGES.map(r => (
+          <button
+            key={r.key}
+            onClick={() => setRange(r.key)}
+            className={cn(
+              'px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all',
+              range === r.key ? 'text-white' : 'text-gray-400 hover:bg-gray-50',
+            )}
+            style={range === r.key ? { background: color } : undefined}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
       {chartData.every(p => p.ventas === 0) ? (
-        <WidgetEmpty message="Sin ventas confirmadas hoy" />
+        <WidgetEmpty message="Sin ventas confirmadas en este período" />
       ) : (
-        <ResponsiveContainer width="100%" height={110}>
+        <ResponsiveContainer width="100%" height={95}>
           <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -38, bottom: 0 }}>
             <defs>
               <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
@@ -102,7 +146,8 @@ export function SalesChartWidget() {
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
             <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#9CA3AF' }}
-              axisLine={false} tickLine={false} interval={2} />
+              axisLine={false} tickLine={false}
+              interval={range === 'today' ? 2 : range === '30d' ? 4 : 0} />
             <YAxis tick={{ fontSize: 9, fill: '#9CA3AF' }} axisLine={false} tickLine={false}
               tickFormatter={v => v === 0 ? '' : formatPrice(v, currency).replace(/[^0-9K]/g, '')} />
             <Tooltip
