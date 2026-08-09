@@ -281,7 +281,7 @@ export default function SectionTour({ section }: { section: string }) {
       {/* ── Botón ? — bottom-left, no choca con el botón IA (bottom-right) ── */}
       <button
         onClick={openTour}
-        className="fixed bottom-6 left-6 z-30 h-9 w-9 rounded-full bg-white border border-gray-200
+        className="fixed bottom-20 left-4 lg:bottom-6 lg:left-[244px] z-30 h-9 w-9 rounded-full bg-white border border-gray-200
                    shadow-md flex items-center justify-center text-gray-400
                    hover:text-blue-500 hover:border-blue-300 hover:shadow-lg transition-all"
         title="Ver guía de esta sección"
