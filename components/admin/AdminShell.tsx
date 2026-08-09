@@ -155,14 +155,14 @@ function Sidebar({ business, userEmail, verticalColor, navItems, role, onAIOpen 
         </div>
       </div>
 
-      {/* Dashboard link */}
-      <div className="px-3 pt-3">
+      {/* Dashboard link — fijo, separado del scroll de abajo */}
+      <div className="px-3 pt-3 pb-2 border-b shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
         <NavItem href="/admin" label="Dashboard" icon="LayoutDashboard"
           exact verticalColor={verticalColor} />
       </div>
 
       {/* Nav items del vertical */}
-      <nav className="flex-1 px-3 pt-1 space-y-0.5 overflow-y-auto pb-2">
+      <nav className="flex-1 px-3 pt-2 space-y-0.5 overflow-y-auto pb-2">
         {navItems
           .filter(item => role === 'owner' || !OWNER_ONLY_HREFS.includes(item.href))
           .map(item => (
@@ -248,10 +248,14 @@ function MobileDrawer({ open, onClose, business, userEmail, verticalColor, navIt
           </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 pt-4 space-y-0.5 overflow-y-auto pb-4">
+        {/* Dashboard link — fijo, separado del scroll de abajo */}
+        <div className="px-3 pt-4 pb-2 border-b shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
           <NavItem href="/admin" label="Dashboard" icon="LayoutDashboard"
             exact onClick={onClose} verticalColor={verticalColor} />
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 px-3 pt-2 space-y-0.5 overflow-y-auto pb-4">
           {navItems
             .filter(item => role === 'owner' || !OWNER_ONLY_HREFS.includes(item.href))
             .map(({ href, label, icon, exact }) => (
